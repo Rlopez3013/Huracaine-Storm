@@ -1,0 +1,82 @@
+---
+title: "Prediction of exercising"
+author: "Rafael Lopez"
+date: "11/27/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Introduction 
+We are analizing the Gym data of how well the people exercise.We want to create a predicted model to correctly classify how well people perform in the gym.We use Random Forest model to create a very accurate prediction.Half of the data was used to create the model and the other half was used to validate the data.
+
+##Loading 
+We loaded in the two part of the data, training and testing. We summarize the data and clean all the unnecessary information.
+```{r,echo=TRUE}
+#download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","lift_train.csv",method = "curl")
+lift_train <- read.csv("lift_train.csv",na.strings = c("NA","","#DIV/0!"),stringsAsFactors = FALSE)
+#download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","lift_test.csv",method = "curl")
+lift_test<-read.csv("lift_test.csv",na.strings = c("NA","","#DIV/0!"),stringsAsFactors = FALSE)
+##### Cleaning data ####
+library(caret)
+library(rpart)
+
+### get rid of zero and incomplete data (cleaning) ####
+colSums(lift_train == 0 | is.na(lift_train)) ### if is zero or na = true
+#number of real observation per column
+liftreal<-colSums(!(lift_train == 0 | is.na(lift_train))) ### if is zero or na = false
+which(liftreal== 0) ## finding not real data.
+completecols  <-which(liftreal > 12000) #### more complete data per columns
+### clean up data frame ####
+lift_train2 <- lift_train[,completecols]
+lift_train2[,1:7]<-list (NULL) ## get rid of columns 1:7 not useful data
+lift_train2$classe <- as.factor(lift_train2$classe)#changing from chr to Factor
+
+```
+## Centering the data
+We center and scale the data to form a normal distribution.
+```{r,echo=TRUE}
+
+lift_train3 <-scale(lift_train2[-53],center = TRUE, scale = TRUE)
+lift_train3 <- as.data.frame(lift_train3)
+lift_train3$classe <- lift_train2$classe
+
+```
+# Data Partission 
+We create a data partission to have information for training and validation.
+```{r,echo=TRUE}
+lift_trainpartisian <- createDataPartition(lift_train3$classe, list = FALSE)
+lift_train4 <- lift_train3[lift_trainpartisian,]
+lift_test4 <- lift_train3[-lift_trainpartisian,]
+```
+# Building the Decision Tree
+We use the Random Forest for building the predictive model.
+
+```{r,echo=TRUE}
+library("caret")
+library("randomForest")
+library("rpart")
+
+set.seed(123456)
+
+fitliftrf8 <- train(classe ~.,method = "rf",data = lift_train4)
+```
+# Cross Validation
+We performed the cross validation with the validation data from the partissian.Also we use confusion Matrix to confirm accuracy.
+```{r,echo=TRUE}
+predict8 <-predict(fitliftrf8,newdata = lift_test4)
+confurf8 <- confusionMatrix(predict8,lift_test4$classe)
+confurf8
+```
+
+# Predicting test data
+The prediction model allow us to predict the 20 test cases.
+```{r, echo = TRUE}
+predict4 <- predict(fitliftrf8,lift_test)
+predict4 
+```
+
+
+
+
